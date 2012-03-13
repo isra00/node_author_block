@@ -1,0 +1,72 @@
+<?php
+
+/**
+ * Crea un bloque con información del autor del nodo actual
+ *
+ * @param string $op one of "list", "view", "save" and "configure"
+ * @param integer $delta code to identify the block
+ * @param array $edit only for "save" operation
+ */ 
+function node_author_block_block($op = 'list', $delta = 0, $edit = array()) {
+
+    global $base_url;
+    
+    print_r($node);
+    
+    if ($op == "list") {
+        /*
+         * Block listing
+         */
+        $block = array();
+        $block[0]["info"] = t('Author bio block');
+        return $block;
+    } else if ($op == 'view') {
+    
+        /*
+         * Block viewing
+         */
+        $block = array();
+        
+        if (arg(0) == 'node' && is_numeric(arg(1)) ) {
+            $nid = arg(1);
+        } else {
+            return array();
+        }
+        
+        /** @todo Que el usuario lo pueda personalizar desde la configuración del bloque */
+        $campo_nombre = "profile_nombre_real";
+        $campo_bio = "profile_bio";
+        
+        //Obtiene el nombre real y la bio de la BD
+        $query = "SELECT {profile_fields}.name, {profile_values}.value FROM {profile_values} "
+                . "JOIN {profile_fields} ON {profile_values}.fid = {profile_fields}.fid "
+                . "JOIN {node} ON {node}.uid = {profile_values}.uid "
+                . "WHERE {profile_values}.uid = {node}.uid";
+
+        $q = db_query($query, $uid, $campo);
+        
+        $usuario = array();
+        
+        while ($campo = db_fetch_object($q)) {
+            if ($campo->name == $campo_nombre) {
+                $usuario['nombre'] = $campo->value;
+            } elseif ($campo->name == $campo_bio) {
+                $usuario['bio'] = $campo->value;
+            }
+        }
+        
+        //Obtiene la imagen del usuario
+        $sql_pic = "SELECT {users}.picture FROM {users} "
+               . "JOIN {node} ON {node}.uid = {users}.uid "
+               . "WHERE {node}.nid = '%d'";
+               
+        $q_pic = db_fetch_object(db_query($sql_pic, $nid));
+        
+        $usuario['picture'] = $q_pic->picture;
+
+        $block['subject'] = "";
+        $block['content'] = "<div class='authorbioblock'><img src='$base_url/" . $usuario['picture'] . "'/><h4>" . $usuario['nombre'] . "</h4><div class='authorbioblock-bio'>" . $usuario['bio'] . "</div></div>";
+        
+        return $block;
+    }
+}
